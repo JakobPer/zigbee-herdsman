@@ -323,6 +323,7 @@ export class EZSPAdapter extends Adapter {
         disableResponse: boolean,
         disableRecovery: boolean,
         sourceEndpoint?: number,
+        profileId?: number,
     ): Promise<ZclPayload | undefined> {
         if (zclFrame.colorStreamType)
         {
