@@ -1,13 +1,13 @@
-import {Adapter} from '../adapter';
-import {Wait} from '../utils';
-import {logger} from '../utils/logger';
-import {assertString} from '../utils/utils';
-import * as Zcl from '../zspec/zcl';
+import type {Adapter} from "../adapter";
+import {wait} from "../utils";
+import {logger} from "../utils/logger";
+import {assertString} from "../utils/utils";
+import * as Zcl from "../zspec/zcl";
 
-const NS = 'zh:controller:touchlink';
+const NS = "zh:controller:touchlink";
 const scanChannels = [11, 15, 20, 25, 12, 13, 14, 16, 17, 18, 19, 21, 22, 23, 24, 26];
 
-class Touchlink {
+export class Touchlink {
     private adapter: Adapter;
     private locked: boolean;
 
@@ -18,7 +18,7 @@ class Touchlink {
 
     private lock(lock: boolean): void {
         if (lock && this.locked) {
-            throw new Error(`Touchlink operation already in progress`);
+            throw new Error("Touchlink operation already in progress");
         }
 
         this.locked = lock;
@@ -48,7 +48,7 @@ class Touchlink {
                 }
             }
         } finally {
-            logger.info(`Restore InterPAN channel`, NS);
+            logger.info("Restore InterPAN channel", NS);
             await this.adapter.restoreChannelInterPAN();
             this.lock(false);
         }
@@ -71,7 +71,7 @@ class Touchlink {
             logger.debug(`Identifying '${ieeeAddr}'`, NS);
             await this.adapter.sendZclFrameInterPANToIeeeAddr(this.createIdentifyRequestFrame(transaction), ieeeAddr);
         } finally {
-            logger.info(`Restore InterPAN channel`, NS);
+            logger.info("Restore InterPAN channel", NS);
             await this.adapter.restoreChannelInterPAN();
             this.lock(false);
         }
@@ -90,12 +90,12 @@ class Touchlink {
 
             logger.debug(`Identifying '${ieeeAddr}'`, NS);
             await this.adapter.sendZclFrameInterPANToIeeeAddr(this.createIdentifyRequestFrame(transaction), ieeeAddr);
-            await Wait(2000);
+            await wait(2000);
 
             logger.debug(`Reset to factory new '${ieeeAddr}'`, NS);
             await this.adapter.sendZclFrameInterPANToIeeeAddr(this.createResetFactoryNewRequestFrame(transaction), ieeeAddr);
         } finally {
-            logger.info(`Restore InterPAN channel`, NS);
+            logger.info("Restore InterPAN channel", NS);
             await this.adapter.restoreChannelInterPAN();
             this.lock(false);
         }
@@ -121,11 +121,11 @@ class Touchlink {
 
                     // Device answered (if not it will fall in the catch below),
                     // identify it (this will make e.g. the bulb flash)
-                    logger.debug(`Identifying`, NS);
+                    logger.debug("Identifying", NS);
                     await this.adapter.sendZclFrameInterPANToIeeeAddr(this.createIdentifyRequestFrame(transaction), response.address);
-                    await Wait(2000);
+                    await wait(2000);
 
-                    logger.debug(`Reset to factory new`, NS);
+                    logger.debug("Reset to factory new", NS);
                     await this.adapter.sendZclFrameInterPANToIeeeAddr(this.createResetFactoryNewRequestFrame(transaction), response.address);
                     done = true;
                 } catch (error) {
@@ -135,7 +135,7 @@ class Touchlink {
                 if (done) break;
             }
         } finally {
-            logger.info(`Restore InterPAN channel`, NS);
+            logger.info("Restore InterPAN channel", NS);
             await this.adapter.restoreChannelInterPAN();
             this.lock(false);
         }
@@ -150,7 +150,7 @@ class Touchlink {
             true,
             undefined,
             0,
-            'scanRequest',
+            "scanRequest",
             Zcl.Clusters.touchlink.ID,
             {transactionID: transaction, zigbeeInformation: 4, touchlinkInformation: 18},
             {},
@@ -164,7 +164,7 @@ class Touchlink {
             true,
             undefined,
             0,
-            'identifyRequest',
+            "identifyRequest",
             Zcl.Clusters.touchlink.ID,
             {transactionID: transaction, duration: 65535},
             {},
@@ -178,7 +178,7 @@ class Touchlink {
             true,
             undefined,
             0,
-            'resetToFactoryNew',
+            "resetToFactoryNew",
             Zcl.Clusters.touchlink.ID,
             {transactionID: transaction},
             {},

@@ -1,4 +1,4 @@
-/* istanbul ignore file */
+/* v8 ignore start */
 //--------------------------------------------------------------
 // Define macros for handling 3-bit frame numbers modulo 8
 
@@ -69,5 +69,5 @@ export const lowHighBits = (n: number): [number, highBits: number] => [lowBits(n
  * @returns
  */
 export const byteToBits = (n: number): string => {
-    return (n >>> 0).toString(2).padStart(8, '0');
+    return (n >>> 0).toString(2).padStart(8, "0");
 };

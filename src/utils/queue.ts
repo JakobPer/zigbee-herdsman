@@ -9,7 +9,7 @@ interface Job {
     start?: () => void;
 }
 
-class Queue {
+export class Queue {
     private jobs: Job[];
     private readonly concurrent: number;
 
@@ -57,6 +57,7 @@ class Queue {
 
         if (job) {
             // if we get here, start is always defined for job
+            // biome-ignore lint/style/noNonNullAssertion: ignored using `--suppress`
             job.start!();
         }
     }
@@ -106,5 +107,3 @@ class Queue {
         return cancelled;
     }
 }
-
-export default Queue;

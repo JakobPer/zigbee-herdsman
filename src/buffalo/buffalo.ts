@@ -1,6 +1,7 @@
-import {EUI64} from '../zspec/tstypes';
+import {Utils as ZSpecUtils} from "../zspec";
+import type {Eui64} from "../zspec/tstypes";
 
-class Buffalo {
+export class Buffalo {
     protected position: number;
     protected buffer: Buffer;
 
@@ -11,6 +12,14 @@ class Buffalo {
 
     public getPosition(): number {
         return this.position;
+    }
+
+    /**
+     * Set the position of the internal position tracker.
+     * @param position
+     */
+    public setPosition(position: number): void {
+        this.position = position;
     }
 
     public getBuffer(): Buffer {
@@ -233,17 +242,21 @@ class Buffalo {
     }
 
     public writeIeeeAddr(value: string /*TODO: EUI64*/): void {
-        this.writeUInt32(parseInt(value.slice(10), 16));
-        this.writeUInt32(parseInt(value.slice(2, 10), 16));
+        this.writeUInt32(Number.parseInt(value.slice(10), 16));
+        this.writeUInt32(Number.parseInt(value.slice(2, 10), 16));
     }
 
-    public readIeeeAddr(): EUI64 {
-        return `0x${Buffer.from(this.readBuffer(8)).reverse().toString('hex')}`;
+    public readIeeeAddr(): Eui64 {
+        return ZSpecUtils.eui64LEBufferToHex(this.readBuffer(8));
     }
 
     public writeBuffer(values: Buffer | number[], length: number): void {
         if (values.length !== length) {
             throw new Error(`Length of values: '${values}' is not consitent with expected length '${length}'`);
+        }
+
+        if (values.length === 0) {
+            return;
         }
 
         if (!(values instanceof Buffer)) {
@@ -318,13 +331,21 @@ class Buffalo {
     }
 
     public writeUtf8String(value: string): void {
-        // value==='' is supported and is identified as "empty string"
-        this.position += this.buffer.write(value, this.position, 'utf8');
+        if (value === "") {
+            // identified as "empty string", no need to write anything
+            return;
+        }
+
+        this.position += this.buffer.write(value, this.position, "utf8");
     }
 
     public readUtf8String(length: number): string {
-        // length===0 is supported and is identified as "empty string"
-        const value = this.buffer.toString('utf8', this.position, this.position + length);
+        if (length === 0) {
+            // is identified as "empty string", no need to read anything
+            return "";
+        }
+
+        const value = this.buffer.toString("utf8", this.position, this.position + length);
         this.position += length;
         return value;
     }

@@ -1,7 +1,7 @@
-import {Clusters} from './definition/cluster';
-import {DataType, DataTypeClass} from './definition/enums';
-import {Foundation, FoundationCommandName, FoundationDefinition} from './definition/foundation';
-import {Attribute, Cluster, ClusterDefinition, ClusterName, Command, CustomClusters} from './definition/tstype';
+import {Clusters} from "./definition/cluster";
+import {DataType, DataTypeClass} from "./definition/enums";
+import {Foundation, type FoundationCommandName, type FoundationDefinition} from "./definition/foundation";
+import type {Attribute, Cluster, ClusterDefinition, ClusterName, Command, CustomClusters} from "./definition/tstype";
 
 const DATA_TYPE_CLASS_DISCRETE = [
     DataType.DATA8,
@@ -70,17 +70,19 @@ const FOUNDATION_DISCOVER_RSP_IDS = [
 export function getDataTypeClass(dataType: DataType): DataTypeClass {
     if (DATA_TYPE_CLASS_DISCRETE.includes(dataType)) {
         return DataTypeClass.DISCRETE;
-    } else if (DATA_TYPE_CLASS_ANALOG.includes(dataType)) {
-        return DataTypeClass.ANALOG;
-    } else {
-        throw new Error(`Don't know value type for '${DataType[dataType]}'`);
     }
+
+    if (DATA_TYPE_CLASS_ANALOG.includes(dataType)) {
+        return DataTypeClass.ANALOG;
+    }
+
+    throw new Error(`Don't know value type for '${DataType[dataType]}'`);
 }
 
 function hasCustomClusters(customClusters: CustomClusters): boolean {
     // XXX: was there a good reason to not set the parameter `customClusters` optional? it would allow simple undefined check
     // below is twice faster than checking `Object.keys(customClusters).length`
-    for (const k in customClusters) return true;
+    for (const _k in customClusters) return true;
     return false;
 }
 
@@ -98,8 +100,7 @@ function findClusterNameByID(
 
         if (cluster.ID === id) {
             // priority on first match when matching only ID
-            /* istanbul ignore else */
-            if (name == undefined) {
+            if (name === undefined) {
                 name = clusterName;
             }
 
@@ -107,7 +108,9 @@ function findClusterNameByID(
                 name = clusterName;
                 partialMatch = false;
                 break;
-            } else if (!cluster.manufacturerCode) {
+            }
+
+            if (!cluster.manufacturerCode) {
                 name = clusterName;
                 break;
             }
@@ -124,7 +127,7 @@ function getClusterDefinition(
 ): {name: string; cluster: ClusterDefinition} {
     let name: string | undefined;
 
-    if (typeof key === 'number') {
+    if (typeof key === "number") {
         let partialMatch: boolean;
 
         // custom clusters have priority over Zcl clusters, except in case of better match (see below)
@@ -153,8 +156,8 @@ function getClusterDefinition(
               }
             : Clusters[name as ClusterName];
 
-    if (!cluster) {
-        if (typeof key === 'number') {
+    if (!cluster || cluster.ID === undefined) {
+        if (typeof key === "number") {
             name = key.toString();
             cluster = {attributes: {}, commands: {}, commandsResponse: {}, manufacturerCode: undefined, ID: key};
         } else {
@@ -169,16 +172,23 @@ function getClusterDefinition(
     return {name, cluster};
 }
 
-function createCluster(name: string, cluster: ClusterDefinition, manufacturerCode?: number): Cluster {
-    const attributes: {[s: string]: Attribute} = Object.assign({}, ...Object.entries(cluster.attributes).map(([k, v]) => ({[k]: {...v, name: k}})));
-    const commands: {[s: string]: Command} = Object.assign({}, ...Object.entries(cluster.commands).map(([k, v]) => ({[k]: {...v, name: k}})));
-    const commandsResponse: {[s: string]: Command} = Object.assign(
-        {},
-        ...Object.entries(cluster.commandsResponse).map(([k, v]) => ({[k]: {...v, name: k}})),
-    );
+function cloneClusterEntriesWithName<T extends Record<string, unknown>>(entries: Record<string, T>): Record<string, {name: string} & T> {
+    const clone: Record<string, {name: string} & T> = {};
 
-    const getAttributeInternal = (key: number | string): Attribute | undefined => {
-        if (typeof key === 'number') {
+    for (const key in entries) {
+        clone[key] = {...entries[key], name: key};
+    }
+
+    return clone;
+}
+
+function createCluster(name: string, cluster: ClusterDefinition, manufacturerCode?: number): Cluster {
+    const attributes: Record<string, Attribute> = cloneClusterEntriesWithName(cluster.attributes);
+    const commands: Record<string, Command> = cloneClusterEntriesWithName(cluster.commands);
+    const commandsResponse: Record<string, Command> = cloneClusterEntriesWithName(cluster.commandsResponse);
+
+    const getAttribute = (key: number | string): Attribute | undefined => {
+        if (typeof key === "number") {
             let partialMatchAttr: Attribute | undefined;
 
             for (const attrKey in attributes) {
@@ -189,42 +199,20 @@ function createCluster(name: string, cluster: ClusterDefinition, manufacturerCod
                         return attr;
                     }
 
-                    if (attr.manufacturerCode == undefined) {
+                    if (attr.manufacturerCode === undefined) {
                         partialMatchAttr = attr;
                     }
                 }
             }
 
             return partialMatchAttr;
-        } else {
-            for (const attrKey in attributes) {
-                const attr = attributes[attrKey];
-
-                if (attr.name === key) {
-                    return attr;
-                }
-            }
         }
 
-        return undefined;
-    };
-
-    const getAttribute = (key: number | string): Attribute => {
-        const result = getAttributeInternal(key);
-        if (!result) {
-            throw new Error(`Cluster '${name}' has no attribute '${key}'`);
-        }
-
-        return result;
-    };
-
-    const hasAttribute = (key: number | string): boolean => {
-        const result = getAttributeInternal(key);
-        return !!result;
+        return attributes[key];
     };
 
     const getCommand = (key: number | string): Command => {
-        if (typeof key === 'number') {
+        if (typeof key === "number") {
             for (const cmdKey in commands) {
                 const cmd = commands[cmdKey];
 
@@ -233,12 +221,10 @@ function createCluster(name: string, cluster: ClusterDefinition, manufacturerCod
                 }
             }
         } else {
-            for (const cmdKey in commands) {
-                const cmd = commands[cmdKey];
+            const cmd = commands[key];
 
-                if (cmd.name === key) {
-                    return cmd;
-                }
+            if (cmd) {
+                return cmd;
             }
         }
 
@@ -246,7 +232,7 @@ function createCluster(name: string, cluster: ClusterDefinition, manufacturerCod
     };
 
     const getCommandResponse = (key: number | string): Command => {
-        if (typeof key === 'number') {
+        if (typeof key === "number") {
             for (const cmdKey in commandsResponse) {
                 const cmd = commandsResponse[cmdKey];
 
@@ -255,12 +241,10 @@ function createCluster(name: string, cluster: ClusterDefinition, manufacturerCod
                 }
             }
         } else {
-            for (const cmdKey in commandsResponse) {
-                const cmd = commandsResponse[cmdKey];
+            const cmd = commandsResponse[key];
 
-                if (cmd.name === key) {
-                    return cmd;
-                }
+            if (cmd) {
+                return cmd;
             }
         }
 
@@ -275,13 +259,12 @@ function createCluster(name: string, cluster: ClusterDefinition, manufacturerCod
         commands,
         commandsResponse,
         getAttribute,
-        hasAttribute,
         getCommand,
         getCommandResponse,
     };
 }
 
-export function getCluster(key: string | number, manufacturerCode: number | undefined, customClusters: CustomClusters): Cluster {
+export function getCluster(key: string | number, manufacturerCode: number | undefined = undefined, customClusters: CustomClusters = {}): Cluster {
     const {name, cluster} = getClusterDefinition(key, manufacturerCode, customClusters);
     return createCluster(name, cluster, manufacturerCode);
 }
@@ -297,7 +280,7 @@ function getGlobalCommandNameById(id: number): FoundationCommandName {
 }
 
 export function getGlobalCommand(key: number | string): Command {
-    const name = typeof key === 'number' ? getGlobalCommandNameById(key) : (key as FoundationCommandName);
+    const name = typeof key === "number" ? getGlobalCommandNameById(key) : (key as FoundationCommandName);
     const command = Foundation[name];
 
     if (!command) {
@@ -310,7 +293,7 @@ export function getGlobalCommand(key: number | string): Command {
         parameters: command.parameters,
     };
 
-    if (command.response != undefined) {
+    if (command.response !== undefined) {
         result.response = command.response;
     }
 
